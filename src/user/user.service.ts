@@ -10,6 +10,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
 import { Repository } from 'typeorm';
 import { HashService } from 'src/providers/hash/hash.service';
+import { HttpResponse } from 'src/types/types';
 
 @Injectable()
 export class UserService {
@@ -19,9 +20,10 @@ export class UserService {
     private readonly hashService: HashService,
   ) {}
 
-  async create(createUserDto: CreateUserDto) {
+  async create(createUserDto: CreateUserDto): Promise<HttpResponse<User>> {
     const userAlreadyExists = await this.userRepository.findOne({
       where: { email: createUserDto.email },
+      withDeleted: true,
     });
 
     if (userAlreadyExists) {
@@ -37,16 +39,22 @@ export class UserService {
     const user = this.userRepository.create(createUserDtoWithHashedPassword);
     await this.userRepository.save(user);
 
-    return 'User created successfully';
+    return {
+      message: 'User created successfully',
+    };
   }
 
-  findAll() {
-    return this.userRepository.find({
+  async findAll(): Promise<HttpResponse<User[]>> {
+    const users = await this.userRepository.find({
       select: ['id', 'email', 'name'],
     });
+
+    return {
+      data: users,
+    };
   }
 
-  async findOne(id: string) {
+  async findOne(id: string): Promise<HttpResponse<User>> {
     const user = await this.userRepository.findOne({
       where: { id },
       select: ['id', 'email', 'name'],
@@ -56,10 +64,15 @@ export class UserService {
       throw new NotFoundException('User not found');
     }
 
-    return user;
+    return {
+      data: user,
+    };
   }
 
-  async update(id: string, updateUserDto: UpdateUserDto) {
+  async update(
+    id: string,
+    updateUserDto: UpdateUserDto,
+  ): Promise<HttpResponse> {
     const user = await this.userRepository.findOne({
       where: { id },
     });
@@ -82,10 +95,12 @@ export class UserService {
 
     await this.userRepository.save(updatedUser);
 
-    return 'User updated successfully';
+    return {
+      message: 'User updated successfully',
+    };
   }
 
-  async remove(id: string) {
+  async remove(id: string): Promise<HttpResponse> {
     const user = await this.userRepository.findOne({
       where: { id },
     });
@@ -96,6 +111,8 @@ export class UserService {
 
     await this.userRepository.softRemove(user);
 
-    return 'User deleted successfully';
+    return {
+      message: 'User deleted successfully',
+    };
   }
 }
